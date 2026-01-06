@@ -1,0 +1,13 @@
+altair
+pandas
+streamlit
+opencv-python-headless
+numpy
+crewai
+google-generativeai
+fastapi
+uvicorn
+pydantic
+python-dotenv
+litellm
+crewai-tools
