@@ -10,7 +10,7 @@ import io
 from PIL import Image
 
 # Configuration - FIXED FOR HUGGING FACE DEPLOYMENT
-BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "https://samiee2213-bjj.hf.space")
+BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "https://samiee2213-bjj-agentic.hf.space")
 
 # Page configuration
 st.set_page_config(
