@@ -12,6 +12,7 @@ from PIL import Image
 # Configuration - FIXED FOR HUGGING FACE DEPLOYMENT
 BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "https://samiee2213-bjj-agentic.hf.space")
 
+
 # Page configuration
 st.set_page_config(
     page_title="BJJ AI Coach - Pro Analysis",
@@ -841,12 +842,20 @@ def main():
         """)
         
         st.markdown("---")
-
+        st.markdown("### 💡 BEST PRACTICES")
+        st.markdown("""
+        - ✅ Good lighting
+        - ✅ Side angle camera
+        - ✅ Both athletes in frame
+        - ✅ Clear athlete distinctions
+        - ✅ 15-60 second clips ideal
+        """)
         
         st.markdown("---")
         st.markdown("### 🎯 FEATURES")
         st.markdown("""
-        - **Smart Frame Extraction**
+        - **Smart Frame Extraction**: 40% from ending
+        - **Submission Detection**: Tap recognition
         - **Weighted Scoring**: Outcome-based
         - **Frame Attachments**: Visual evidence
         """)
