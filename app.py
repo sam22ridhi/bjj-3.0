@@ -9,7 +9,7 @@ from typing import Dict, Any
 import io
 from PIL import Image
 
-# Configuration - FIXED FOR HUGGING FACE DEPLOYMENT
+
 BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "https://samiee2213-bjj-agentic.hf.space")
 
 
@@ -399,11 +399,11 @@ def render_skill_breakdown(skills: Dict[str, int]):
             """, unsafe_allow_html=True)
 
 def render_strengths_weaknesses(strengths: list, weaknesses: list):
-    """Render strengths and weaknesses side by side"""
+    """Render strengths and weaknesses side by side (handles 3-7 items dynamically)"""
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### ✅ STRENGTHS")
+        st.markdown(f"### ✅ STRENGTHS ({len(strengths)})")
         for i, strength in enumerate(strengths, 1):
             st.markdown(f"""
                 <div class="strength-card">
@@ -417,7 +417,7 @@ def render_strengths_weaknesses(strengths: list, weaknesses: list):
             """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown("### ⚠️ WEAKNESSES")
+        st.markdown(f"### ⚠️ WEAKNESSES ({len(weaknesses)})")
         for i, weakness in enumerate(weaknesses, 1):
             st.markdown(f"""
                 <div class="weakness-card">
@@ -429,7 +429,7 @@ def render_strengths_weaknesses(strengths: list, weaknesses: list):
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-
+            
 def render_opportunities(opportunities: list):
     if not opportunities:
         return
