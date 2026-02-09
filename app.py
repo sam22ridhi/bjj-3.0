@@ -10,7 +10,7 @@ import io
 from PIL import Image
 
 
-BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "https://samiee2213-bjj-agentic.hf.space")
+BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "http://127.0.0.1:8000")
 
 
 # Page configuration
@@ -310,8 +310,46 @@ st.markdown("""
         margin: 10px 0;
         border-left: 4px solid #667eea;
     }
+
+    .belt-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-left: 8px;
+    }
+    .belt-white { background: #f0f0f0; color: #333; }
+    .belt-blue { background: #1a5fa8; color: white; }
+    .belt-purple { background: #7b2d8e; color: white; }
+    .belt-brown { background: #8B4513; color: white; }
+    .belt-black { background: #1a1a1a; color: white; border: 1px solid #555; }
     </style>
 """, unsafe_allow_html=True)
+
+# Belt color mapping for UI
+BELT_COLORS = {
+    "white": "#f0f0f0",
+    "blue": "#1a5fa8",
+    "purple": "#7b2d8e",
+    "brown": "#8B4513",
+    "black": "#1a1a1a",
+}
+
+
+def get_expected_counts(duration_seconds: float) -> Dict[str, int]:
+    """Mirror the backend's calculate_feedback_count logic for display purposes."""
+    if duration_seconds <= 15:
+        return {"strengths": 1, "weaknesses": 1, "opportunities": 1, "moments": 2}
+    elif duration_seconds <= 45:
+        return {"strengths": 2, "weaknesses": 2, "opportunities": 2, "moments": 3}
+    elif duration_seconds <= 90:
+        return {"strengths": 3, "weaknesses": 3, "opportunities": 2, "moments": 4}
+    elif duration_seconds <= 180:
+        return {"strengths": 4, "weaknesses": 4, "opportunities": 3, "moments": 5}
+    else:
+        return {"strengths": 5, "weaknesses": 5, "opportunities": 4, "moments": 6}
+
 
 def check_backend_health(url: str) -> tuple[bool, str]:
     """Check if backend is online and get version"""
@@ -398,12 +436,17 @@ def render_skill_breakdown(skills: Dict[str, int]):
                 </div>
             """, unsafe_allow_html=True)
 
-def render_strengths_weaknesses(strengths: list, weaknesses: list):
-    """Render strengths and weaknesses side by side (handles 3-7 items dynamically)"""
+def render_strengths_weaknesses(strengths: list, weaknesses: list, expected_strengths: int = None, expected_weaknesses: int = None):
+    """Render strengths and weaknesses side by side with expected counts shown"""
     col1, col2 = st.columns(2)
     
+    s_count = len(strengths)
+    w_count = len(weaknesses)
+    s_label = f"({s_count}/{expected_strengths})" if expected_strengths else f"({s_count})"
+    w_label = f"({w_count}/{expected_weaknesses})" if expected_weaknesses else f"({w_count})"
+    
     with col1:
-        st.markdown(f"### ✅ STRENGTHS ({len(strengths)})")
+        st.markdown(f"### ✅ STRENGTHS {s_label}")
         for i, strength in enumerate(strengths, 1):
             st.markdown(f"""
                 <div class="strength-card">
@@ -417,7 +460,7 @@ def render_strengths_weaknesses(strengths: list, weaknesses: list):
             """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown(f"### ⚠️ WEAKNESSES ({len(weaknesses)})")
+        st.markdown(f"### ⚠️ WEAKNESSES {w_label}")
         for i, weakness in enumerate(weaknesses, 1):
             st.markdown(f"""
                 <div class="weakness-card">
@@ -577,8 +620,21 @@ def display_analysis_results(results: Dict[str, Any]):
     if not data:
         data = results
     
-    if "processing_time" in results:
-        st.caption(f"⚡ Analysis completed in {results['processing_time']}")
+    # Get processing info
+    processing_time = results.get("processing_time", "")
+    frames_analyzed = results.get("frames_analyzed", 0)
+    belt_info = results.get("belt_info", {})
+    
+    # Build info line
+    info_parts = []
+    if processing_time:
+        info_parts.append(f"⚡ Analysis completed in {processing_time}")
+    if frames_analyzed:
+        info_parts.append(f"📹 {frames_analyzed} frames analyzed")
+    if belt_info.get("user_belt"):
+        info_parts.append(f"🥋 {belt_info['user_belt'].title()} Belt")
+    if info_parts:
+        st.caption(" | ".join(info_parts))
     
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -590,8 +646,17 @@ def display_analysis_results(results: Dict[str, Any]):
     
     st.markdown("<br><br>", unsafe_allow_html=True)
     
+    # Calculate expected counts from video duration for display
+    avg_interval = float(results.get("avg_frame_interval", "1.8").rstrip("s"))
+    est_duration = frames_analyzed * avg_interval if frames_analyzed else 52
+    expected = get_expected_counts(est_duration)
+    
     if "strengths" in data and "weaknesses" in data:
-        render_strengths_weaknesses(data["strengths"], data["weaknesses"])
+        render_strengths_weaknesses(
+            data["strengths"], data["weaknesses"],
+            expected_strengths=expected["strengths"],
+            expected_weaknesses=expected["weaknesses"],
+        )
     
     st.markdown("<br><br>", unsafe_allow_html=True)
     
@@ -678,6 +743,23 @@ def main():
             "🥋 Activity Type",
             ["Brazilian Jiu-Jitsu", "No-Gi Grappling", "Judo", "Wrestling", "MMA Grappling"]
         )
+        
+        # Belt selection row
+        belt_col1, belt_col2 = st.columns(2)
+        with belt_col1:
+            user_belt = st.selectbox(
+                "🥋 Your Belt",
+                ["white", "blue", "purple", "brown", "black"],
+                index=0,
+                help="Your current belt rank — affects scoring expectations"
+            )
+        with belt_col2:
+            opponent_belt = st.selectbox(
+                "🥋 Opponent Belt",
+                ["unknown", "white", "blue", "purple", "brown", "black"],
+                index=0,
+                help="Opponent's belt rank (if known)"
+            )
     
     st.markdown("---")
     
@@ -708,7 +790,7 @@ def main():
                     )
                 time.sleep(0.8)
                 
-                # Stage 2: Frame Extraction (Simulated for visual flow)
+                # Stage 2: Frame Extraction
                 with loader_container:
                     render_animated_loader(
                         "Extracting Frames...",
@@ -720,19 +802,21 @@ def main():
                 with loader_container:
                     render_animated_loader(
                         "AI Analysis in Progress...",
-                        "Gemini Vision: Frame-by-frame position detection | CrewAI: Technical analysis",
+                        "Gemini Vision: Frame-by-frame detection | Event Timeline Extraction | CrewAI: Technical analysis",
                         55
                     )
                 
                 # Prepare request
-                uploaded_file.seek(0)  # Reset file pointer
+                uploaded_file.seek(0)
                 files = {
                     "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
                 }
                 data = {
                     "user_description": user_desc,
                     "opponent_description": opp_desc,
-                    "activity_type": activity
+                    "activity_type": activity,
+                    "user_belt": user_belt,
+                    "opponent_belt": opponent_belt,
                 }
                 
                 with loader_container:
@@ -757,7 +841,7 @@ def main():
                 with loader_container:
                     render_animated_loader(
                         "Validating Results...",
-                        "Generic feedback filtering | Frame attachment | Quality check",
+                        "Quality filtering | Belt-aware scoring | Frame attachment",
                         90
                     )
                 
@@ -836,9 +920,10 @@ def main():
         st.markdown("""
         1. **Upload** your sparring video (15-90s)
         2. **Describe** who's who clearly
-        3. **Wait** 30-50s for AI analysis
-        4. **Review** detailed performance breakdown
-        5. **Download** JSON for records
+        3. **Select** belt levels for accurate scoring
+        4. **Wait** 30-60s for AI analysis
+        5. **Review** detailed performance breakdown
+        6. **Download** JSON for records
         """)
         
         st.markdown("---")
@@ -849,15 +934,29 @@ def main():
         - ✅ Both athletes in frame
         - ✅ Clear athlete distinctions
         - ✅ 15-60 second clips ideal
+        - ✅ Accurate belt selection
+        """)
+        
+        st.markdown("---")
+        st.markdown("### 🥋 FEEDBACK COUNTS")
+        st.markdown("""
+        | Duration | Strengths | Weaknesses |
+        |----------|-----------|------------|
+        | ≤15s | 1 | 1 |
+        | 15-45s | 2 | 2 |
+        | 45-90s | 3 | 3 |
+        | 90-180s | 4 | 4 |
+        | 180s+ | 5 | 5 |
         """)
         
         st.markdown("---")
         st.markdown("### 🎯 FEATURES")
         st.markdown("""
+        - **Belt-Aware Scoring**: Adjusts expectations per rank
+        - **Event Timeline**: Extracts distinct match events
         - **Smart Frame Extraction**: 40% from ending
         - **Submission Detection**: Tap recognition
-        - **Weighted Scoring**: Outcome-based
-        - **Frame Attachments**: Visual evidence
+        - **Outcome-Based Scoring**: Score matches what happened
         """)
         
         st.markdown("---")
