@@ -10,7 +10,7 @@ import io
 from PIL import Image
 
 
-BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "http://127.0.0.1:8000")
+BJJ_BACKEND_URL = os.getenv("BJJ_BACKEND_URL", "https://huggingface.co/spaces/samiee2213/bjj-agentic")
 
 
 # Page configuration
